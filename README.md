@@ -1,2 +1,29 @@
-# automobile_multivariate_analysis
-Multivariate statistical analysis of automobile characteristics using factor analysis, MANOVA, ordination, and clustering.
+# Latent Structure and Group Differences in Automobile Characteristics
+
+This project applies multivariate statistical methods to the 1985 UCI Automobile dataset to study relationships among automobile price, performance, size, fuel efficiency, and body style.
+
+## Overview
+
+The goal of this analysis is to understand whether automobile characteristics can be summarized by lower-dimensional latent structure, whether body styles differ in their overall multivariate profiles, and whether automobiles naturally form groups based on quantitative characteristics.
+
+## Methods
+
+- Factor Analysis
+- MANOVA / Multivariate GLM
+- Multi-Response Permutation Procedure (MRPP)
+- Correspondence Analysis
+- Non-metric Multidimensional Scaling (NMDS)
+- Hierarchical Cluster Analysis
+
+## Main Findings
+
+The analysis suggests that much of the structure in the automobile data reflects a tradeoff between larger, more powerful, higher-priced vehicles and more fuel-efficient vehicles. Body style is meaningfully associated with multivariate automobile profiles, but the ordination results show substantial overlap rather than perfectly separated body-style clusters.
+
+## Repository Structure
+
+```text
+data/
+  automobile.csv
+automobile_multivariate_statistical_analysis.Rmd
+automobile_multivariate_analysis_report.pdf
+README.md
