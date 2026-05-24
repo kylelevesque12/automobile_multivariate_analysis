@@ -1,0 +1,1156 @@
+---
+title: "Latent Structure and Group Differences in Automobile Characteristics"
+output: html_document
+author: "By: Kyle Levesque, Eric Lin"
+
+--- 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+library(MASS)
+library(biotools)
+library(heplots)
+library(klaR)
+library(car)
+library(rgl)
+library(vegan3d)
+library(mgcv)
+library(dplyr)
+library(knitr)
+library(tidyverse)
+library(fpc)
+library(cluster)
+library(ape)
+library(amap)
+library(NbClust)
+library(ggplot2)
+library(ggdendro)
+library(psych)
+library(vegan)
+library(tidyverse)
+library(psych)
+library(car)
+library(corrplot)
+library(EFAtools)
+
+```
+
+# Introduction
+
+The auto industry is multidimensional. Factors like mileage, type, weight, and size all interact and affect various metrics of the car, such as price. Because of this multivariate dynamic, automobile data often exist in high-dimensional space, where it can be difficult to visualize and understand. As such, we seek to better understand this dynamic by investigating topics like whether the many characteristics of a car are driven by a smaller number of latent dimensions, whether known categories of automobiles differ in overall multivariate profile, whether they form clusters, and more. The hope is that with this, we can gain better insights into the complex market structures, consumer preferences, and engineering trade-offs that define the automotive landscape. By breaking high-dimensional data into more manageable components, we can move beyond surface-level analyses to uncover the hidden relationships that dictate a vehicle’s performance and value.
+
+Our chosen dataset comes from a 1985 Ward’s Automotive Yearbook, containing 205 observations (automobiles) and 26 variables (characteristics/features/attributes) for each observation. This dataset was publicly available for use at the [UC Irvine Machine Learning Repository](https://archive.ics.uci.edu/dataset/10/automobile). 
+
+
+# Design and Primary Questions
+
+Our study is an observational study based on existing automobile data. This project uses an exploratory analysis with no treatments assigned. The primary questions we aim to answer all involve this multivariate dynamic of automobiles. In particular, we want to explore the following: 
+
+1. “Can the many quantitative automobile variables be explained by a smaller number of latent dimensions?”
+2. “Do predefined automobile categories differ in their overall multivariate profiles?”
+3. “Do automobiles naturally form groups based on their quantitative characteristics?”
+4. “When automobiles or body styles are displayed in a lower-dimensional ordination space, are there clear gradients, separation, or overlap?”
+
+The following multivariate techniques are used to address these questions: Factor Analysis, MANOVA, Cluster Analysis, and Ordination.
+
+
+# Data
+
+
+Out of the many features in our dataset, we chose these for our multivariate analysis:
+
+<h3 style="text-align: center;">Categorical</h3>   
+
+-   *body.style*: The structural shape and design of the car, one of the following: convertible, hatchback, sedan, wagon, and hardtop. 
+-   *engine.type*: the specific engine configuration
+-   *drive.wheels*: The wheels in a vehicle that receive power from the engine to move the car. (All wheel drive, front wheel drive, rear wheel drive)
+-   *aspiration*: How an engine of a car draws in air for combustion. Can be naturally aspirated (std) or turbocharged (turbo). 
+-   *price_bin*: Each car was assigned a price bin based on whether its price is in the lower third quantile (low bin), middle quantile (medium bin), or upper third quantile (upper bin) of all cars in this dataset.
+-   *mpg_bin*: Each car was assigned a mpg bin based on whether its highway miles per gallon is in the lower third quantile (low), middle quantile (medium), or upper third quantile (upper) of all cars in this dataset. 
+
+<h3 style="text-align: center;">Continuous</h3>   
+
+-   *price*: The price of the car. (Measured in dollars)
+-   *horsepower*: A measure of the rate at which an engine produces power. (Measured in horsepower)
+-   *curb.weight*: The total weight of a vehicle with standard equipment, a full tank of fuel, and all necessary operating fluids, but without passengers or cargo. (Measured in pounds)
+-   *highway.mpg*: How many miles a vehicle can travel on one gallon of gasoline while driving at higher, consistent speeds. (Measured in miles per gallon)
+-   *engine.size*: A measurement of the total volume of all engine cylinders. (Measured in cubic inches)
+-   *height*: a vertical measurement from the ground to the highest point of the vehicle. (Measured in inches)
+-   *length*: a measurement of the total distance from the frontmost point to the rearmost point. (Measured in inches)
+-   *wheel.base*: a measurement of the distance between the center of the front wheels and the center of the rear wheels on the vehicle. (Measured in inches)
+
+<h3 style="text-align: center;">Data Limitations</h3>   
+
+There are several limitations of this dataset that should be acknowledged. First, there is no clear indication of whether the dataset is truly representative of the population of automobiles in 1985. Although it contains a good variety of body styles, including convertibles, hardtops, hatchbacks, sedans, and wagons, the observations may not be evenly distributed across other factors such as manufacturer, region, or vehicle age. In addition, the dataset contains missing values for some variables. To address this, observations with missing values were removed prior to each analysis. Although this only reduced the sample size slightly, it may still introduce bias if the automobiles with missing values differ systematically from those with complete records. Additionally, the data are observational, so the relationships found in this analysis should be interpreted as associations rather than causal effects. Another limitation is that some categorical levels occur infrequently, which can make them appear more extreme in certain methods and more sensitive to unusual observations or outliers. Ultimately, these limitations should be kept in mind when interpreting the results of the multivariate analyses that follow. 
+
+
+# Multivariate Analyses
+
+
+
+## Factor Analysis
+
+
+For factor analysis, we used a smaller subset of six variables: [*price, horsepower, curb.weight, highway.mpg,* *city.mpg, engine.size*]. We did this because they all measure related quantitative features of a car. Variables like horsepower, engine.size, and curb.weight seem like they could reflect a size or performance dimension, while city.mpg and highway.mpg reflect fuel economy. Additionally, price also seems to be a very relevant feature because it is often influenced by characteristics such as size, performance, and fuel economy. Hence, since these variables seem to be connected, it seems plausible that there may be latent factors that explain their underlying correlations. As such, we are left with a dataset with 199 observations and 6 variables for our factor analysis. 
+
+<h3 style="text-align: center;">Plots and Summary Statistics</h3>  
+
+
+```{r, include = FALSE}
+automobile <- read.csv("/Users/kylelevesque/Downloads/S%DS 3630/automobile.csv")
+```
+
+
+```{r, include=FALSE}
+auto_fa <- automobile[, c("price", "horsepower", "curb.weight",
+"highway.mpg", "city.mpg", "engine.size")]
+auto_fa <- auto_fa[complete.cases(auto_fa), ]
+dim(auto_fa)
+```
+
+
+
+Let's see some summary statistics for our chosen factor analysis variables.
+
+
+```{r, echo=FALSE}
+kable(summary(auto_fa))
+```
+
+
+
+
+<h4 style="text-align: center;">Correlation Plot Between Factor Analysis Variables</h4>  
+
+
+In factor analysis, we want our variables to be highly correlated. If this is the case, our data is likely to be well suited for this technique. We can also make several plots to determine whether this is the case.
+
+```{r, echo=FALSE}
+corrplot.mixed(cor(auto_fa),
+lower.col = "black",
+upper = "ellipse",
+tl.col = "black",
+number.cex = .7,
+tl.pos = "lt",
+tl.cex = .7,
+p.mat = cor.mtest(auto_fa, conf.level = .95)$p,
+sig.level = .05)
+```
+
+We see that our indicators are highly correlated. In particular, price, horsepower, curb.weight, and engine.size are all strongly positively correlated, which may suggest a possible vehicle size/performance/luxury latent factor. On the other hand, fuel efficiency variables like city.mpg and highway.mpg are strongly negatively correlated with these power/size/luxury variables. Therefore, this suggests that we may have latent factors that oppose cars that are large, expensive, and powerful against economical and fuel efficient cars.
+
+Let's now try KMO to validate whether our dataset is suited for Factor Analysis.
+
+<h4 style="text-align: center;">KMO Output</h4>  
+
+```{r, echo = FALSE, warning=FALSE, message=FALSE}
+KMO(as.matrix(auto_fa))
+```
+
+Our dataset seems to be well-suited for factor analysis!
+
+
+<h3 style="text-align: center;">Factor Retention</h3>  
+
+Let's do PCA, a screeplot, and parallel analysis to determine the number of factors that should be retained.
+
+<h4 style="text-align: center;">PCA Results</h4> 
+
+```{r, echo=FALSE}
+comp1 = prcomp(auto_fa, scale. = T )
+summary.PCA.JDRS = function(x){
+sum_JDRS = summary(x)$importance
+sum_JDRS[1, ] = sum_JDRS[1, ]^2
+attr(sum_JDRS, "dimnames")[[1]][1] <- "Eigenvals (Variance)"
+sum_JDRS
+}
+kable(round(summary.PCA.JDRS(comp1), 2))
+```
+
+```{r, echo=FALSE}
+screeplot(comp1,
+type = "lines", col = "red", lwd = 2, pch = 19,
+cex = 1.2,
+main = "Scree Plot of Transformed Automobile Data")
+```
+```{r, echo=FALSE}
+fa.parallel(auto_fa, fa = "fa", n.iter = 100, 
+            show.legend = TRUE,
+            main = "Parallel Analysis for Automobile Data")
+```
+
+
+```{r, include=FALSE}
+kable(round(comp1$rotation, 2))
+```
+
+
+To decide how many factors to retain, we examined the PCA results, the scree plot and the parallel analysis. PCA showed that a large proportion of the total variance is explained in only a few principal components. The first two principal components explain 92% of the total variance. Additionally, the scree plot showed a sharp drop after the first component followed by a clear leveling off, suggesting that only a small number of factors should be retained, likely one or two. The parallel analysis provided stronger evidence for retaining two factors, since the first two observed eigenvalues were larger than the corresponding eigenvalues from the simulated data. This suggests that these two factors explain more variation than would be expected by chance alone. In contrast, the remaining observed eigenvalues were not meaningfully larger than those from the simulated data, so we retained a two-factor solution for the remainder of the analysis. 
+
+<h3 style="text-align: center;">Comparison of Extraction Methods</h3>  
+
+Now let’s first try Factor Analysis using iterative PCA, with Varimax Rotation
+
+
+<h4 style="text-align: center;">Iterative PCA Output</h4>  
+
+```{r, echo=FALSE}
+fact <- fa(auto_fa, nfactors = 2, rotate = "varimax",
+           SMC = FALSE, fm = "pa")
+fact
+```
+
+```{r, include=FALSE}
+repro <- fact$loadings%*%t(fact$loadings)
+#residual correlation matrix
+resid <- cor(auto_fa)-repro
+round(resid, 2)
+```
+
+
+```{r, include=FALSE}
+len <- length(resid[upper.tri(resid)])
+RMSR <- sqrt(sum(resid[upper.tri(resid)]^2)/len)
+```
+
+
+```{r, include=FALSE}
+#proportion of residuals greater than 0.05 in absolute value
+prop_resid <- sum(rep(1, len)[abs(resid[upper.tri(resid)])>0.05])/len
+prop_resid
+```
+
+
+PAF is also meant to be good when indicators are highly correlated. Let's see how it does in comparison.
+
+
+<h4 style="text-align: center;">PAF Output</h4>  
+
+```{r, echo=FALSE}
+fact2 <- fa(auto_fa, nfactors = 2, rotate = "varimax", fm = "pa")
+fact2
+```
+
+```{r, include=FALSE}
+repro2 <- fact2$loadings%*%t(fact2$loadings)
+#residual correlation matrix
+resid2 <- cor(auto_fa)-repro2
+round(resid2, 2)
+```
+
+```{r, include=FALSE}
+len2 <- length(resid2[upper.tri(resid2)])
+RMSR2 <- sqrt(sum(resid2[upper.tri(resid2)]^2)/len2)
+prop_resid2 <- sum(rep(1, len2)[abs(resid2[upper.tri(resid2)])>0.05])/len2
+prop_resid2
+```
+
+
+Lastly, we’ll also try Factor Analysis using Maximum Likelihood.
+
+
+<h4 style="text-align: center;">Maximum Likelihood Output</h4>  
+
+
+```{r, echo=FALSE}
+fact3 <- factanal(auto_fa, factors = 2, rotation = "varimax")
+fact3
+```
+
+```{r, include=FALSE}
+repro3 <- fact3$loadings%*%t(fact3$loadings)
+#residual correlation matrix
+resid3 <- cor(auto_fa)-repro3
+round(resid3, 2)
+```
+
+```{r, include=FALSE}
+len3 <- length(resid3[upper.tri(resid3)])
+RMSR3 <- sqrt(sum(resid3[upper.tri(resid3)]^2)/len3)
+prop_resid3 <- sum(rep(1, len3)[abs(resid3[upper.tri(resid3)])>0.05])/len3
+prop_resid3
+```
+
+
+Now, let’s compare the results from our three extraction methods to choose a best method.
+
+
+```{r, echo=FALSE}
+methods <- c("Iterative PCA", "PAF", "Maximum Likelihood")
+
+comparison_df <- data.frame(Method = methods, 
+                            RMSR =  c(RMSR, RMSR2, RMSR3),
+                            ProportionResiduals = c(prop_resid,
+                                                    prop_resid2,
+                                                    prop_resid3))
+kable(comparison_df)
+```
+
+
+
+Using RMSR and the proportion of residuals greater than 0.05 in absolute value, PAF is the best extraction method for this factor analysis. Iterative PCA and PAF are very close in terms of both RMSR and the proportion of residuals greater than 0.05 in absolute value, but PAF just slightly has a lower RMSR. On the other hand, Maximum Likelihood was the only extraction method that had a proportion of residuals greater than 0.05 higher than 0 and also had the highest RMSR. Hence, while Iterative PCA and PAF perform very similarly, PAF was preferred because it had the lowest RMSR and no residuals exceeding 0.05 in absolute value. Maximum Likelihood performed slightly worse on these criteria, so it was not selected for the final analysis.
+
+
+<h3 style="text-align: center;">Exploring Different Rotations</h3>  
+
+Now, let’s try some different rotations for our best method PAF and see which rotation provides the best final interpretation of the final factors. We have already done a varimax rotation for PAF, so let’s make a loading plot of this rotation.
+
+```{r, echo=FALSE}
+plot(fact2$loadings[, c(1, 2)], pch = 18, 
+     col = 'red', main = "Varimax Rotation for PAF")
+abline(h = 0)
+abline(v = 0)
+text(fact2$loadings[, c(1, 2)], labels = names(auto_fa), cex = 0.8)
+```
+
+And the corresponding loadings for this plot are:
+
+```{r, echo=FALSE}
+fact2$loadings
+```
+
+
+
+Now let’s do a quartimax rotation for PAF and observe a loading plot for this rotation.
+
+
+
+```{r, include=FALSE}
+fact4 <- fa(auto_fa, nfactors = 2, rotate = "quartimax", fm = "pa")
+```
+
+```{r, echo=FALSE}
+plot(fact4$loadings[, c(1, 2)], pch = 18, 
+     col = 'red', main = "Quartimax Rotation for PAF")
+abline(h = 0)
+abline(v = 0)
+text(fact4$loadings[, c(1, 2)], labels = names(auto_fa), cex = 0.8)
+```
+
+
+And the corresponding loadings for the quartimax rotation are:
+
+
+```{r, echo=FALSE}
+fact4$loadings
+```
+
+Between the two rotations, varimax produced the more interpretable solution. It gave a clearer separation of the variables into two groups: price, horsepower, curb.weight, and engine.size clustered together, while city.mpg and highway.mpg grouped together separately. In contrast, the quartimax rotation placed more of the variables on a general factor, making the two-factor structure less distinct. Therefore, we selected the varimax rotation for the final analysis. Under the final varimax-rotated solution, the first factor can be interpreted as a premium vehicle size/performance factor. The highest loadings for this first factor are price at 0.836, horsepower at 0.674, curb.weight at 0.742, and engine.size at 0.910. This suggests that cars with high scores on this factor tend to be larger, heavier, more powerful, and more expensive. The second factor can be interpreted best as a fuel-efficiency factor since the highest loadings are city.mpg at -0.921 and highway.mpg at -0.876. Thus, cars differ on this factor mainly according to their level of fuel efficiency. Overall, these two factors suggest a latent structure reflecting a tradeoff between powerful, larger, and higher-priced vehicles against more economical, fuel-efficient ones.
+
+
+<h3 style="text-align: center;">Factor Analysis Results</h3>  
+
+
+Overall, our factor analysis suggests that the automobile variables are well explained by a two-factor structure. The correlation matrix showed strong relationships among price, horsepower, curb.weight, and engine.size, along with strong opposing relationships between these variables and the fuel-efficiency measures city.mpg and highway.mpg. The overall KMO of 0.833 indicated that the data were well suited for factor analysis, and both the scree plot and parallel analysis supported retaining two factors. After comparing extraction methods, principal axis factoring was selected because it was the method with both the lowest root mean squared error and lowest proportion of residuals greater than 0.05 in absolute value. Finally, the varimax-rotated solution gave the clearest interpretation: the first factor reflects a premium vehicle size/performance dimension, while the second reflects fuel efficiency. Together, these results suggest that the main latent structure in the automobile data is driven by a tradeoff between larger, more powerful, higher-priced vehicles and more economical, fuel-efficient vehicles.
+
+
+# MANOVA/Multivariate GLM
+
+
+Our second question in this analysis seeks to answer whether predefined automobile categories differ in their overall multivariate profiles. To answer this question, a natural automobile category to use was body style. Different car body styles are tailored for different needs: passenger capacity, car performance, fuel economy, etc. From the results of our factor analysis, variables like price, horsepower, curb weight, engine size, and highway mpg represent much of the latent structure and variation behind our automobile data. Hence, to assess whether a body style is associated with overall differences in the overall multivariate profiles of automobiles, we conducted a MANOVA with body style as the predictor and price, horsepower, curb weight, engine size, and highway mpg as the response variables. 
+
+
+```{r, echo=FALSE}
+
+body_counts <- automobile %>%
+  count(body.style, name = "Count") %>%
+  rename(`Body Style` = body.style)
+
+kable(body_counts)
+```
+
+
+
+
+Since both the convertible and hardtop categories contained very few observations, keeping them separate would make the MANOVA less stable, especially with several continuous response variables. Therefore, we combined them into a single "specialty" group. This grouping is reasonable since convertibles and hardtops are similar body styles that represent a less common and more specialized passenger-car body styles compared to hatchbacks, sedans, and wagons. Hence, the revised grouping both improves the reliability of our analysis while preserving a meaningful interpretation of body style differences. 
+
+
+```{r, echo=FALSE}
+auto_manova <- automobile
+auto_manova$body.style[auto_manova$body.style %in% c("convertible", "hardtop")] <- "specialty"
+
+body_counts2 <- auto_manova %>%
+  count(body.style, name = "Count") %>%
+  rename(`Body Style` = body.style)
+
+kable(body_counts2)
+```
+
+
+<h3 style="text-align: center;">Preliminary Diagnostics</h3>
+
+
+<h4 style="text-align: center;">Continuous Responses Normal Quantile Plots</h4>
+
+
+```{r, echo=FALSE}
+par(mfrow = c(2, 3))
+
+invisible(qqPlot(log(auto_manova$price), main = "Log Price"))
+invisible(qqPlot(log(auto_manova$horsepower), main = "Log Horsepower"))
+invisible(qqPlot(auto_manova$curb.weight, main = "Curb Weight"))
+invisible(qqPlot(log(auto_manova$engine.size), main = "Log Engine Size"))
+invisible(qqPlot(auto_manova$highway.mpg, main = "Highway MPG"))
+```
+
+
+<h4 style="text-align: center;">Continuous Responses Pairs Plot</h4>
+
+
+```{r, include=FALSE}
+auto_manova <- auto_manova %>%
+  dplyr::select("price", "horsepower", "curb.weight", "engine.size", "highway.mpg", "body.style") %>%
+  mutate(
+    log_price = log(price),
+    log_horsepower = log(horsepower),
+    log_engine_size = log(engine.size),
+  ) %>%
+  dplyr::select(-price, -horsepower, -engine.size) %>%
+  tidyr::drop_na()
+
+```
+
+
+
+```{r, echo=FALSE}
+pairs.panels(auto_manova[, c("log_price", "log_horsepower", "curb.weight",
+                             "log_engine_size", "highway.mpg")])
+```
+
+
+Before fitting the MANOVA, we used normal quantile plots and a pairs plot as preliminary diagnostics for the response variables. The normal quantile plots indicated that log-transforming price, horsepower, and engine size improved marginal normality, while the pairs plot suggested reasonably linear pairwise relationships among the responses. Thus, these exploratory results supported the use of the transformed variables in the MANOVA model, with a more direct assessment of the MANOVA assumptions carried out later using the residuals.
+
+
+
+Now let's fit the MANOVA model and interpret the results.
+
+
+<h3 style="text-align: center;">MANOVA Output</h3>
+
+```{r, echo=FALSE}
+#options(contrasts = c("contr.sum", "contr.poly"))
+
+auto_manova$body.style <- factor(auto_manova$body.style,
+                                 levels = c("hatchback", "sedan", "specialty", "wagon"))
+
+auto_manova$body.style <- relevel(factor(auto_manova$body.style), ref = "hatchback")
+
+auto_manova_fit <- lm(
+  cbind(log_price, log_horsepower, curb.weight, log_engine_size, highway.mpg) ~ body.style,
+  data = auto_manova
+)
+
+
+
+summary(Anova(auto_manova_fit, type = 3), univariate = T)
+```
+
+
+
+```{r, echo=FALSE}
+cqplot(auto_manova_fit$residuals, main = "Residuals from Body Style GLM")
+```
+
+<h3 style="text-align: center;">MANOVA Coefficients (With Hatchbacks as Reference Group)</h3>
+
+
+```{r, echo=FALSE}
+manova_coefficients <- as.data.frame(auto_manova_fit$coefficients)
+
+manova_coefficients <- cbind(
+  term = rownames(manova_coefficients),
+  manova_coefficients
+)
+
+rownames(manova_coefficients) <- NULL
+
+manova_coefficients$term <- c("Intercept", "Sedan Body Style", "Specialty Body Style", "Wagon Body Style")
+
+kable(manova_coefficients)
+
+
+```
+
+
+<h3 style="text-align: center;">MANOVA/Multivariate GLM Results</h3>
+
+
+Using Type III sums of squares, the MANOVA showed that body style had a highly significant effect on the joint response vector of log price, log horsepower, curb weight, log engine size, and highway MPG. Based on Pillai’s trace, the multivariate effect of body style was significant (p=3.21×10^−16^). The other multivariate test statistics, including Wilks’ lambda, Hotelling-Lawley trace, and Roy’s largest root, all led to the same conclusion. Thus, there is strong evidence that the mean multivariate profiles differ across the body-style groups.
+
+Follow-up univariate tests based on the Type III sums of squares showed that body style was significantly associated with each response variable individually. Specifically, body style had a significant effect on log price (p=8.67×10^−7^), log horsepower (p=2.91×10^−4^), curb weight (p=1.65×10^−5^), log engine size (p=2.79×10^−7^), and highway MPG (p=0.0102).
+
+The chi-square quantile plot of the residuals from the body style MANOVA model suggested that the residuals followed the expected multivariate normal pattern reasonably well over most of the distribution, although the upper-tail departure indicated some mild deviation from multivariate normality and the possible presence of a few unusual observations. Because this departure was not extreme, the results of the chi-square quantile plot of the residuals still suggest that the MANOVA results can be interpreted reasonably.
+
+Using treatment coding with hatchbacks as the reference group, the coefficient estimates from the model provide additional interpretation of the differences between body-style groups. Starting with log price, the coefficients indicate that specialty vehicles (convertibles and hardtops) had the highest estimated prices, followed by sedans, then wagons, while hatchbacks had the lowest. For log horsepower, specialty vehicles again had the highest estimated values, followed by sedans, wagons, and then hatchbacks. Sedans and wagons had very small positive coefficients relative to hatchbacks which suggests that sedans, wagons, and hatchbacks are somewhat closer to one another in horsepower, while specialty vehicles stand out as having the greatest horsepower. For curb weight, specialty vehicles had the highest estimated values, followed closely by wagons, then sedans, with hatchbacks the lightest. For log engine size, specialty vehicles once again had the highest estimated values, followed by sedans, wagons, and hatchbacks. Finally, for highway MPG, hatchbacks had the highest estimated values, followed by sedans, then wagons, while specialty vehicles had the lowest.
+
+Overall, the results from the MANOVA model suggest that body style is meaningfully related to differences in automobile multivariate profiles. In particular, specialty vehicles tend to be more expensive, more powerful, heavier, and have larger engines, while also having lower highway fuel efficiency. Sedans and wagons appear to have more moderate or average profiles across price, horsepower, curb weight, engine size, and highway MPG, although wagons tend to be somewhat heavier and less fuel efficient than sedans. Hatchbacks, by contrast, tend to have the lowest prices, horsepower, curb weight, and engine size, but the highest highway MPG. Taken together, these results suggest that body style captures meaningful differences in cost, size, performance, and fuel efficiency.
+
+
+<h3 style="text-align: center;">Deeper Evaluation into MANOVA Assumptions</h3>
+
+
+While the chi-square quantile plot of our residuals suggest that the assumptions of our MANOVA model are reasonably met, there is some slight upper tail deviation from multivariate normality that is a cause for concern. In particuar, MANOVA has the assumption of homogeneity of covariance matrices. Although combining the hardtops and convertibles into a specialty group helped deal with the problem of few observations, the specialty group still has only 14 observations, which is relatively small compared to groups like hatchbacks and sedans with 70 and 96 observations respectively. Hence, this provides some concern that perhaps this imbalance results in the violation of the homogeneity of covariance matrices. Therefore, to assess the homogeneity of covariance matrices across body style groups, we examined Box's M test. 
+
+
+
+<h4 style="text-align: center;">Box's M Test</h4>
+
+```{r, echo=FALSE}
+boxM(
+  cbind(log_price, log_horsepower, curb.weight, log_engine_size, highway.mpg) ~ body.style,
+  data = auto_manova
+)
+```
+
+Box’s M test was significant, suggesting some evidence that the covariance matrices differ across body-style groups. However, this result should be interpreted cautiously because Box’s M test is highly sensitive, especially in the presence of unequal group sizes and mild departures from multivariate normality. Both of these issues are relevant here, since the specialty group is much smaller than the other body-style groups and the chi-square quantile plot of the residuals showed some upper-tail deviation from multivariate normality. Therefore, while the Box’s M result suggests that the homogeneity of covariance matrices assumption may not hold perfectly, it does not by itself invalidate the MANOVA. In this setting, Pillai’s trace is generally regarded as the most robust of the common MANOVA test statistics, so the significant Pillai’s trace result still provides reasonable support for concluding that body style is associated with differences in the multivariate response profile.
+
+
+<h4 style="text-align: center;">Chi-Square Quantile Plots by Body Style</h4>
+
+
+```{r, echo=FALSE}
+par(mfrow = c(2, 3))
+
+groups <- levels(factor(auto_manova$body.style))
+vars <- c("log_price", "log_horsepower", "curb.weight",
+          "log_engine_size", "highway.mpg")
+
+for (g in groups) {
+  Yg <- subset(auto_manova, body.style == g, select = vars)
+  Yg <- na.omit(Yg)
+  
+  d2 <- mahalanobis(
+    Yg,
+    center = colMeans(Yg),
+    cov = cov(Yg)
+  )
+  
+  qqplot(
+    qchisq(ppoints(nrow(Yg)), df = ncol(Yg)),
+    sort(d2),
+    main = paste("Chi-Square Q-Q:", g),
+    xlab = expression(paste("Theoretical ", chi^2, " Quantiles")),
+    ylab = "Ordered Mahalanobis Distances"
+  )
+  abline(0, 1, col = "red", lwd = 2)
+}
+```
+
+
+The chi-square quantile plots by body style suggest that within-group multivariate normality is only approximately satisfied. For the hatchbacks, the points follow a multivariate normal distribution fairly well through the lower and middle parts of the distribution, but there is noticeable upward deviation in the upper tail, which suggests the possible presence of a few multivariate outliers or somewhat heavier tails than expected under multivariate normality. The specialty group shows some deviation as well, but because that group contains relatively few observations, its chi-square quantile plot is less stable and harder to interpret with confidence. However, the rest of the body styles reasonably meet the multivariate assumption. Overall, these plots suggest that the within-group multivariate normality assumption is not met perfectly, but it appears reasonable as an approximation and does not seem to be severely violated. 
+
+
+
+Overall, the assumptions of the MANOVA model appear to be reasonably satisfied. The chi-square quantile plots indicate that multivariate normality is only approximate, both within body-style groups and in the model residuals, but the departures are mild rather than severe. Although Box’s M test suggests that the covariance matrices may differ across groups, this result is interpreted cautiously because of the unequal group sizes and the known sensitivity of the test. Taken together, and especially given the use of Pillai’s trace, which is generally more robust to these kinds of assumption violations, particularly unequal covariance matrices under unbalanced group sizes, the MANOVA results remain reasonably interpretable.
+
+
+
+<h3 style="text-align: center;">Multi-response Permutation Procedures</h3>
+
+
+Nonetheless, to strengthen our findings and provide support that the MANOVA results were not a direct result of improper assumptions, a nonparametric MANOVA in MRPP was used in addition to determine if the results matched with our MANOVA findings.
+
+
+<h4 style="text-align: center;">MRPP Output</h4>
+
+```{r}
+mrpp <- mrpp(auto_manova[, c("log_price", "log_horsepower", "curb.weight", "log_engine_size", "highway.mpg")],
+             auto_manova$body.style)
+mrpp
+```
+
+<h3 style="text-align: center;">MRPP Results</h3>
+
+Applying MRPP to the same set of multivariate responses as our MANOVA model, the results were significant (p = 0.001), indicating that automobiles with the same body style were more similar to one another than would be expected under random assignment of body style labels. Specifically, the observed within body style group average distance (delta = 549.2) was smaller than the expected distance within body style groups (expected delta = 581.7) if labels were randomly assigned. The chance corrected within-group agreement was positive but modest (A = 0.056), suggesting that while body style groups differ significantly, there is still substantial overlap among them. Overall, the MRPP supports the MANOVA conclusion that body style is associated with meaningful multivariate difference in automobile characteristics. 
+
+
+
+# Ordination
+
+<h3 style="text-align: center;">Correspondence Analysis</h3>
+
+The first ordination method that we use in this analysis is Correspondence Analysis. Given that a lot of the variation that we have attempted to explain in this analysis has been based on continuous data, we used correspondence analysis as an opportunity to try and explain some variation based on categorical data. Thus, in order for the Correspondence Analysis to be more suitable with this categorical data, we first restructured our data into a contingency table. To construct this contingency table, we used body style as the row variable and constructed columns that represented levels of engine type, drive wheels, aspiration, and categorical (binned) versions of price and highway mpg. Then, we aggregated these category indicators by body style to create a final table where the entries represented how frequently each body style is associated with the different levels of our automobile variables. The first five columns of this contingency table is printed below. For instance, the 52 in the entry (hatchback, engine.typeohc) indicates that there are 52 hatchbacks in our dataset with the engine type "ohc". 
+
+
+```{r, echo=FALSE}
+auto_ca <- automobile %>%
+  dplyr::select(body.style, engine.type, drive.wheels, aspiration, price, highway.mpg) %>%
+  tidyr::drop_na() %>%
+  mutate(
+    price_bin = cut(price,
+                    breaks = quantile(price, probs = c(0, 1/3, 2/3, 1),
+                                      na.rm = TRUE),
+                    include.lowest = TRUE,
+                    labels = c("low", "medium", "high")),
+    mpg_bin = cut(highway.mpg,
+                    breaks = quantile(highway.mpg, probs = c(0, 1/3, 2/3, 1),
+                                      na.rm = TRUE),
+                    include.lowest = TRUE,
+                    labels = c("low", "medium", "high")),
+  )
+
+X <- model.matrix(
+  ~ engine.type + drive.wheels + aspiration + price_bin + mpg_bin - 1,
+  data = auto_ca
+)
+
+ca_table <- rowsum(X, group = auto_ca$body.style)
+ca_table <- as.data.frame(ca_table)
+
+kable(ca_table[, c(1:5)])
+```
+ 
+  <h3 style="text-align: center;">CA Summary</h3>
+  
+After running correspondence analysis on our contingency table by body style, we obtained the following summary from our model. 
+
+ 
+```{r, include=FALSE}
+ca_fit <- cca(ca_table)
+summary(ca_fit)
+```
+
+ 
+ 
+```{r, echo = FALSE}
+summary(ca_fit)
+```
+ 
+ 
+ 
+ <h3 style="text-align: center;">CA Plots and Variable Scores</h3>
+ 
+ We also created the following plots from our correspondence analysis results and sorted the variable scores on the first two axes to aid with the interpretation of our model. 
+
+```{r, echo=FALSE}
+plot(ca_fit, display = "species", main = "Variable Biplot (CA)")
+```
+
+
+```{r, echo=FALSE}
+plot(ca_fit, display = c("sites", "species"), type = "n",
+     main = "CA Map: Body Style vs. Car Characteristics",
+     xlab = "CA1 (60.74%)", ylab = "CA2 (21.61%)",
+     ylim = c(-2, 4),
+     xlim = c(-4, 2))
+points(ca_fit, display = "sites", pch = 21, bg = "yellow", col = "red", cex = 1.2)
+text(ca_fit, display = "sites", col = "gray20", pos = 1)
+text(ca_fit, display = "species", col = "blue", cex = 0.8)
+```
+
+
+<h4 style="text-align: center;">Variable Scores on CA1</h4>
+
+
+```{r, echo=FALSE}
+col_scores <- scores(ca_fit, display = "species")
+CA1_scores <- data.frame(
+  Variable = rownames(col_scores),
+  CA1 = col_scores[, 1]
+)
+
+CA1_scores <- CA1_scores[order(CA1_scores$CA1), ]
+
+rownames(CA1_scores) <- NULL
+kable(CA1_scores)
+```
+
+
+<h4 style="text-align: center;">Variable Scores on CA2</h4>
+
+
+```{r, echo=FALSE}
+CA2_scores <- data.frame(
+  Variable = rownames(col_scores),
+  CA2 = col_scores[, 2]
+)
+
+CA2_scores <- CA2_scores[order(CA2_scores$CA2), ]
+
+rownames(CA2_scores) <- NULL
+kable(CA2_scores)
+```
+
+
+<h3 style="text-align: center;">Correspondence Analysis Results</h3>
+
+The correspondence analysis had a total inertia of 0.1017, which indicates that there is some association between body style and the categorized automobile characteristics of engine type, drive wheels, aspiration, price, and highway mpg beyond what would be expected under independence. The first correspondence axis (CA1) explained 60.74% of the total inertia, while the second correspondence axis (CA2) explained an additional 21.61%. Together, these first two axes accounted for 82.34% of the total inertia and consequently the two-dimensional CA map provides a reasonably good summary of the main association structure between body style and the categorized automobile characteristics in the contingency table. 
+
+The first axis appears to reflect a contrast between a more fuel-efficient, front-wheel-drive profile and a more expensive, rear-wheel-drive profile associated with distinct engine configurations. Based on the variable scores on CA1, the strongest positive values, in decreasing order, are engine type rotor (rotary), the high-MPG category, and front-wheel drive. The strongest negative values, in decreasing order of magnitude, are engine type ohcf (overhead camshaft, front-mounted), rear-wheel drive, engine type dohc (double overhead camshaft), and the high-price category.
+
+The second axis appears to reflect additional contrast driven more by engine design rather than price or mileage. Based on the variable scores on CA2, the strongest positive values, in decreasing order, are engine type rotor (rotary), engine type dohc (double overhead camshaft), and engine type ohcv (overhead camshaft, v-type). The strongest negative values, in decreasing order of magnitude, are engine type l (L-head), and turbo aspiration. This suggests that CA2 is mainly separating automobiles by engine design, with rotary and overhead camshaft engine types on one side and L-head engine type and turbo aspiration on the other. 
+
+Taken together with the CA map, these first two axes help explain how the different body styles are associated with different automobile characteristics. Convertibles occupy a distinct position in ordination space with a strong negative value along CA1 and a strong positive value along CA2. Hence, based on the variable scores on CA1 and CA2, convertibles appear to be more associated with characteristics such as high price, rear-wheel drive, and overhead camshaft or rotary engine types. Hardtops also occupy a distinct position along the negative axis of CA1 and the positive axis of CA2. However, hardtops appear somewhat less extreme than convertibles, suggesting that they tend to share some of the same specialized characteristics but are not as strongly differentiated. Wagons lie on the negative side of CA1 but the negative side of CA2, which suggests that they are still associated with the more expensive and less fuel-efficient side of the main gradient, but are distinguished from convertibles and hardtops by a different engine-design profile. In contrast, hatchbacks and sedans lie closer to the center of the map, suggesting that they are less distinct and closer to the average automobile profile. However, the slight rightward position of hatchbacks suggests that they may be somewhat more associated with the practical, fuel-efficient, and front-wheel drive side of the ordination. Overall, this suggests that convertibles and hardtops have the most distinctive body style profiles, wagons occupy a somewhat separate middle position, and hatchbacks and sedans are closer to the average automobile profile in the dataset.
+
+<h3 style="text-align: center;">Multidimensional Scaling</h3>
+
+To carry out multidimensional scaling, we returned to the set of continuous variables that captured the major aspects of vehicle characteristics. These variables were price, horsepower, curb weight, engine size, and highway mpg which together represent a good mixture of luxury, power, size, and fuel efficiency characteristics. Since these variables were measured on very different scales, we standardized them before computing distances so no single variable would dominate the ordination due to its units.
+
+We also used non-metric multidimensional scaling (NMDS) opposed to classical metric multidimensional scaling because NMDS focuses on preserving the rank order of the dissimilarities rather than the exact distance themselves, which provides a more robust approach for representing this multivariate relationships between automobiles in lower dimensions.
+
+
+```{r, include=FALSE}
+auto_mds_full <- automobile %>%
+  dplyr::select(body.style, price, horsepower, curb.weight, highway.mpg, engine.size, height, length, wheel.base) %>%
+  tidyr::drop_na()
+
+auto_mds <- auto_mds_full %>%
+  dplyr::select(body.style, price, horsepower, curb.weight, highway.mpg, engine.size) %>%
+  dplyr::mutate(across(c(price, horsepower, curb.weight, highway.mpg, engine.size),
+                       ~ as.numeric(scale(.))))
+
+X <- scale(auto_mds[, 2:6])
+```
+
+
+
+
+```{r, include=FALSE}
+results <- matrix(NA, 21, 5)
+
+for (j in 1:5) {
+  for (i in 1:20) {
+    temp <- X
+    
+    for (col in 1:ncol(temp)) {
+      temp[, col] <- sample(temp[, col])
+    }
+    
+    results[i, j] <- metaMDS(temp, k = j, distance = "euclidean", try = 20)$stress
+  }
+  
+  results[21, j] <- metaMDS(X, k = j, distance = "euclidean", try = 20)$stress
+}
+```
+
+```{r, echo=FALSE}
+plot(c(1:5), results[21, ], type = "b", col = "blue", lwd = 3, 
+     ylim = c(0, max(results)), xlab = "Dimensions", ylab = "Stress", pch = 19, 
+     main = "NMDS Scree Plot for Automobile Data, Euclidean Distance")
+mins <- apply(results[1:20, ], 2, min)
+maxs <- apply(results[1:20, ], 2, max)
+meds <- apply(results[1:20, ], 2, median)
+
+for (i in 1:5){
+  points(rep(i, 3), c(mins[i], meds[i], maxs[i]), type = "b", col = "red", lwd = 3, pch = 19)
+}
+legend(3.5, (.9*max(results)), c("NMDS Solution", "20 Permutations"), lwd = 3, col = c("blue", "red"))
+```
+
+```{r, include=FALSE}
+nmds_fit <- metaMDS(X, k = 2, distance = "euclidean")
+```
+
+```{r, include=FALSE}
+nmds_fit$stress
+```
+
+
+The stress scree plot shows a clear decline in stress as the number of dimensions increases, with a particularly strong improvement by two dimensions and only gradual improvements afterwards. Since the two-dimensional Euclidean solution already achieve a low stress of 0.051 and increasing beyond 2 dimensions makes a representation of the underlying structure harder to interpret, a 2 dimensional solution was retained for this analysis. 
+
+Furthermore, the stress value that was obtained from the observed data is consistently lower than those that are obtained from randomized datasets, which suggests that our 2D NMDS solution is capturing meaningful structure in the dataset rather than just random noise. 
+
+
+
+
+```{r, echo=FALSE}
+fit <- envfit(nmds_fit, X, permutations = 999)
+
+
+cols <- as.numeric(as.factor(auto_mds$body.style))
+plot(nmds_fit$points, col = cols, pch = 19, xlab = "NMDS1", ylab = "NMDS2",
+     main = "2D NMDS Solution by Body Style")
+legend("topright",
+       legend = levels(as.factor(auto_mds$body.style)),
+       col = 1:length(levels(as.factor(auto_mds$body.style))),
+       pch = 19, cex = 0.8)
+plot(fit, col = "red")
+```
+
+
+
+The 2D NMDS solution suggests that the automobile body styles are not cleanly separated in multivariate space. Instead, there is substantial overlap among body styles, indicating that body styles do not form sharply distinct groups based on price, horsepower, engine size, highway MPG, and curb weight. The fitted variable vectors suggest that the main NMDS gradient reflects a contrast between heavier, larger engined, and more powerful automobiles on one side of the ordination and more fuel-efficient automobiles on the other. In particular, the right side of the plot is more closely associated with higher highway MPG, while the left side is more closely associated with greater horsepower, curb weight, and engine size. Hatchbacks appear somewhat more aligned with the fuel-efficient side of the ordination, whereas some convertibles and hardtops occupy more extreme positions associated with larger size and performance characteristics. Overall, the NMDS results suggest that body style is associated with automobile characteristics, but this association is seen more through broad continuous gradients and substantial overlap than through sharply separated body-style clusters. This complements the correspondence analysis results by suggesting that although some body styles are associated with more distinctive categorical characteristic profiles, the continuous automobile variables still reveal considerable overlap among individual vehicles.
+
+An additional concern that is more evident in this solution than in the correspondence analysis is the difference in the prevalence of the body styles. For instance, in the 2D NMDS plot, some body styles such as sedans are represented by far more observations than body styles such as convertibles or hardtops. Consequently, the more common body styles are better represented in the ordination, while the rarer body styles are represented by only a few automobiles. This means that the apparent distinctness of convertibles or hardtops should be interpreted somewhat cautiously, since it may partly reflect their small sample sizes rather than a truly separate cluster structure.
+
+
+<h3 style="text-align: center;">Additional NMDS Analysis</h3>
+
+To gain a deeper understanding of the structure of the 2D NMDS solution, we overlaid nonlinear surfaces for two key variables used in the ordination: price and highway MPG. The goal was to determine whether these nonlinear contour plots could provide additional clarity about the main gradients underlying the NMDS configuration and help interpret how automobile characteristics vary across the ordination space. 
+
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+
+fig <- invisible(ordiplot(nmds_fit, type = "n", main = "NMDS with Non-Linear Plot for Price"))
+
+points(fig, "sites", col = cols, pch = 19, cex = 0.9)
+
+legend("topright",
+       legend = levels(as.factor(auto_mds$body.style)),
+       col = 1:length(levels(as.factor(auto_mds$body.style))),
+       pch = 19, cex = 0.8)
+#plot(fit)
+tmp <- with(auto_mds,
+            ordisurf(nmds_fit, price, add = TRUE, col = "darkred"))
+
+
+```
+
+The nonlinear price surface adds to the earlier NMDS interpretation by showing that price is one of the main gradients in the ordination. In particular, the far left side of the plot corresponds to very high fitted price values, and a noticeable number of the automobiles in this region are convertibles and hardtops. Since these body styles are relatively uncommon in the dataset to begin with, their presence in this high-price region seems fairly substantial. This suggests that convertibles and hardtops are disproportionately associated with the expensive end of the automobile profile, which helps explain why they appear more distinct than the more common body styles. Sedans also tend to appear in parts of this higher-price region, although their much greater prevalence in the dataset makes this pattern less striking than it is for convertibles and hardtops. In contrast, hatchbacks and wagons do not tend to fall in this extreme price region and instead appear more concentrated around the average to below-average price range.
+
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+fig2 <- invisible(ordiplot(nmds_fit, type = "n", main = "NMDS with Non-Linear Plot for Highway MPG"))
+
+points(fig2, "sites", col = cols, pch = 19, cex = 0.9)
+
+legend("topright",
+       legend = levels(as.factor(auto_mds$body.style)),
+       col = 1:length(levels(as.factor(auto_mds$body.style))),
+       pch = 19, cex = 0.8)
+#plot(fit)
+tmp <- with(auto_mds,
+            ordisurf(nmds_fit, highway.mpg, add = TRUE, col = "black"))
+```
+
+The nonlinear surface for highway MPG suggests a fairly smooth and close to linear gradient across the ordination, since the contour lines are relatively parallel and move in a consistent direction. The right side of the plot corresponds to higher fitted highway MPG values, while the left side corresponds to lower fitted values. This supports the earlier NMDS interpretation that one of the main gradients in the solution reflects a contrast between more fuel-efficient automobiles and less fuel-efficient automobiles. Looking at the body styles, hatchbacks appear more concentrated in the higher-MPG region, which fits with their more practical and fuel-efficient profile. Convertibles and hardtops appear more often in the lower-MPG region, suggesting that they are less associated with fuel efficiency. Sedans and wagons tend to fall more in the middle, although there is still substantial overlap among all of the body styles.
+
+
+
+<h3 style="text-align: center;">Ordination Results</h3>
+
+Taken together, the ordination results suggest that body style is meaningfully related to automobile characteristics, but that these differences are expressed more through broad gradients than through completely separated groups. The correspondence analysis, which was based on categorized variables aggregated by body style, showed that convertibles and hardtops were associated with more distinctive automobile profiles, while hatchbacks and sedans were closer to the average automobile profile. The NMDS analysis, which was based on continuous variables for individual automobiles, showed that much of the multivariate structure occurs along gradients of price, size, performance, and fuel efficiency, with substantial overlap among the body styles. The additional nonlinear surfaces for price and highway MPG reinforced this interpretation by showing that convertibles and hardtops tend to be associated more with the expensive and less fuel-efficient end of the automobile profile, while hatchbacks tend to align more with the practical and fuel-efficient side. Overall, the ordination methods suggest that body styles are not fully distinct clusters, but they are still meaningfully differentiated by broad multivariate automobile characteristics.
+
+
+# Cluster Analysis
+
+For cluster analysis, we chose one categorical variable [*engine.type*] and five continuous variables [*price, horsepower, curb.weight, highway.mpg, engine.size*]. We did this because these specific continuous variables were identified as the primary drivers of variation within the data's latent structure. By selecting variables with high factor loadings, we ensure that our clusters are formed using the dimensions that hold the most "information density," rather than including redundant or noisy variables (like wheel base or height) that may not contribute significantly to group separation. In addition, these variables represent the fundamental trade-offs in automotive engineering and marketing; specifically, the tension between performance [*horsepower, engine.size*], physical scale [*curb.weight*], and economic value [*price, highway.mpg*]. Inclusion of [*engine.type*] as a categorical anchor allows us to see how physical engine configurations align with the clusters formed by quantitative performance metrics. This addresses our goal of determining if automobiles naturally form groups that reflect similar features and market performance.
+
+
+```{r, include=FALSE}
+auto_ca <- automobile[, c("engine.type", 
+                      "highway.mpg", 
+                      "price", 
+                      "horsepower", 
+                      "curb.weight", 
+                      "engine.size")]
+auto_ca <- auto_ca[complete.cases(auto_ca), ]
+
+dim(auto_ca)
+```
+
+
+<h3 style="text-align: center;">Plots and Summary Statistics</h3>  
+
+
+```{r, echo=FALSE}
+kable(head(auto_ca))
+```
+
+
+```{r, echo=FALSE}
+kable(summary(auto_ca))
+```
+
+
+Given that we have 5 continuous variables in our current dataset, let's check them for outliers to determine what distance metric may be optimal:
+
+
+```{r, echo=FALSE}
+boxplot(auto_ca$price, col = "blue", main = "Boxplot of Price", ylab = "Price")
+```
+
+```{r, echo=FALSE}
+boxplot(auto_ca$curb.weight, col = "red", main = "Boxplot of Curb Weight", ylab = "Curb Weight")
+```
+
+```{r, echo=FALSE}
+boxplot(auto_ca$horsepower, auto_ca$highway.mpg, auto_ca$engine.size, col = "yellow", main = "Boxplot of Engine Size", ylab = "Engine Size")
+```
+
+Several variables have many outliers; for instance, outliers consist of about 7% of the data for prices of vehicles. We can also observe that there is skewness and non-normality. 
+
+```{r, echo=FALSE}
+hist(auto_ca$price, col = "blue", main = "Histogram of Price", xlab = "Price")
+```
+
+
+
+```{r, include=FALSE}
+sum(auto_ca$price > 30000) / dim(auto_ca)[1]
+```
+
+
+Thus Euclidean distance may not be the best distance metric. Instead, we can use Manhattan distance, which is more robust to outliers compared to Euclidean or Sorenson. We could also use Minkowski distance metric which is a more general form of Manhattan distance. Several of our variables are also on significantly different scales. For example, curb.weight which is continuous has numbers in the following range:
+
+```{r, echo=FALSE}
+paste("(", 
+      min(auto_ca$curb.weight), 
+      ",", 
+      max(auto_ca$curb.weight),
+      ")")
+```
+
+Thus, it would be wise to standardize our data to reduce the influence on our results due to this difference in scale.
+
+```{r, echo=FALSE}
+auto_scaled = as.data.frame(scale(auto_ca[,-1]))
+kable(head(auto_scaled))
+```
+
+
+<h3 style="text-align: center;">Exploring Various Cluster Methods</h3>  
+
+
+Let's do hierarchical cluster analysis to produce some dendrograms, with various methods:
+
+```{r, include=FALSE}
+auto.dist = dist(auto_scaled, method = "manhattan")
+auto.clust = hclust(auto.dist)
+```
+
+```{r, echo=FALSE}
+plot(auto.clust, 
+     xlab = "",
+     ylab = "Distance", main = "Clustering for automobiles, Manhattan Distance with Complete Clustering",
+     labels = FALSE)
+
+rect.hclust(auto.clust, k = 3)
+```
+
+```{r, echo=FALSE}
+auto.dist2 = dist(auto_scaled, method = "manhattan")
+auto.clust2 = hclust(auto.dist2, method = "ward.D")
+
+plot(auto.clust2, 
+     cex = 0.6, xlab = "", 
+     ylab = "Distance", main = "Clustering of Automobiles, Manhattan Distance with Ward's Method",
+     labels = FALSE)
+
+rect.hclust(auto.clust2, k = 3)
+```
+
+```{r, echo=FALSE}
+auto.dist3 = dist(auto_scaled, method = "minkowski")
+auto.clust3 = hclust(auto.dist3, method = "ward.D")
+
+plot(auto.clust3, 
+     cex = 0.6, xlab = "", 
+     ylab = "Distance", main = "Clustering of Automobiles, Minkowski Distance with Ward's Method",
+     labels = FALSE)
+
+rect.hclust(auto.clust3, k = 3)
+```
+
+<h3 style="text-align: center;">Comparison of Methods</h3>  
+
+Although the third clustering method, Minkowski distance with Ward’s method, appeared to produce the most visually balanced split in the dendrogram, we ultimately selected the second method, Manhattan distance with Ward’s method, as our method of choice. This choice was guided by later inspection in PCA and discriminant-analysis space, where the Manhattan + Ward clustering appeared to produce groups that were more distinct and easier to interpret. In contrast, the Minkowski + Ward solution appeared to force some observations into a small cluster in a way that reduced its distinctness once additional observations were included. As a result, a more visually even split in the dendrogram did not necessarily correspond to better-separated or more meaningful clusters. In this case, the Manhattan + Ward method provided a more interpretable grouping structure, even if its dendrogram appeared slightly less balanced at first glance.
+
+
+<h3 style="text-align: center;">Cluster Retention</h3> 
+
+
+Now let's determine how many clusters we should actually retain.
+
+
+```{r, echo=FALSE}
+auto.res = NbClust(auto_scaled, 
+               distance = "manhattan", 
+               min.nc = 2, max.nc = 10, 
+               method = "ward.D", 
+               index = "all")
+
+```
+
+We see that the optimal number of clusters to retain is 3, as we expected from the dendrogram. There is some support for 4 as another choice of clusters, and this seems reasonable given that it's close to 3 and is also in the general area of the elbow in the plot. This suggests moving from 3 clusters to 4 clusters could be capturing additional variance. But, ultimately we may want to choose 3 clusters, as having a 4th one could increase the overlap of our groups, making them less distinct and harder to define. We can explore this in more depth later on.
+
+
+$\\$
+
+We can also try k-means clustering now:
+
+```{r, include=FALSE}
+auto.km1 = kmeans(auto_scaled, centers = 3)
+auto.km1
+```
+
+```{r, echo=FALSE}
+kdata <- as.matrix(auto_scaled) 
+n.lev <- 15
+
+
+wss <- numeric(n.lev)
+wss[1] <- (nrow(kdata) - 1) * sum(apply(kdata, 2, var))
+for (i in 2:n.lev) {
+  wss[i] <- kmeans(kdata, centers = i, nstart = 20)$tot.withinss
+}
+
+
+k.rand <- function(x) {
+  km.rand <- matrix(sample(as.vector(x)), nrow(x), ncol(x))
+  rand.wss <- numeric(n.lev)
+  rand.wss[1] <- (nrow(km.rand) - 1) * sum(apply(km.rand, 2, var))
+  for (i in 2:n.lev) {
+    rand.wss[i] <- kmeans(km.rand, centers = i, nstart = 20)$tot.withinss
+  }
+  return(rand.wss)
+}
+
+
+rand.mat <- replicate(250, k.rand(kdata))
+
+
+xrange <- range(1:n.lev)
+yrange <- range(log(rand.mat), log(wss))
+plot(xrange, yrange, type='n', xlab='Number of Clusters (k)', 
+     ylab='Log of Within Group SSE', 
+     main='Cluster Solutions against Log of SSE')
+for (i in 1:250) lines(log(rand.mat[,i]), type='l', col='red')
+lines(log(wss), type="b", col='blue', pch=19)
+legend('topright', c('Actual Data', '250 Random Runs'), col=c('blue', 'red'), lty=1)
+```
+
+
+Based on the elbow plot above, it appears that the log within-group SSE starts to flatten a lot around k = 3 or k = 4. Therefore, the k-means results are fairly consistent with the hierarchical clustering and NbClust results that suggested 3 groups.
+
+
+$\\$
+
+
+We will also explore another method for determining the number of groups, model-based k-means analysis:
+
+```{r, echo=FALSE}
+km_runs <- kmeansruns(
+  auto_scaled,
+  krange = 2:10,
+  runs = 50, 
+  criterion = "asw"
+)
+paste0("K-means Analysis Best K: ", km_runs$bestk)
+```
+
+Based on model-based k-means analysis, the best k was 2, which differs from the previous results and the hierarchical clustering results. However, as we will see later, there may be several reasons for sticking with 3 clusters.
+
+
+<h3 style="text-align: center;">Plots in PCA/DA Space</h3> 
+
+
+```{r, echo=FALSE}
+cuts <- cutree(auto.clust2, k = 3)
+
+plotcluster(auto_scaled, cuts, main = "Three Cluster Solution in DA Space", 
+            xlab = "First Discriminant Function", ylab = "Second Discriminant Function")
+```
+
+```{r, echo=FALSE}
+clusplot(auto_scaled, cuts, color = TRUE, shade = TRUE, labels = 2, lines = 0, 
+         main = "Automobile Three Cluster Plot, First Two PC", cex = .5)
+```
+
+
+$\\$
+
+
+Based on the model-based k-means analysis, it determined that 2 was the best number of clusters to create. Let's see what that looks like also.
+
+$\\$
+
+```{r, echo=FALSE}
+clusplot(auto_scaled, km_runs$cluster, color = TRUE, 
+         shade = TRUE, labels = 0,
+         main = "Model-based K-means Analysis Cluster Plot, 
+         First Two PC")
+```
+
+$\\$
+
+Using 2 clusters seems to just combine the purple and red clusters, which were already pretty separable and distinct. Hence, we will stick with 3 clusters in this case.
+
+$\\$
+
+<h3 style="text-align: center;">Component Interpretations</h3> 
+
+
+We can now try to interpret our clusters/groups. First, let's run PCA on our auto_scaled df and get loadings. This will help with interpreting the plots in Q5 and what groups were formed.
+
+$\\$
+
+```{r, echo=FALSE}
+auto.pca <- prcomp(auto_scaled, center = FALSE, scale. = FALSE)
+kable(auto.pca$rotation[, 1:2])
+```
+
+-   Component 1: Economical/Light Cars vs. Larger, High-Power, Expensive Cars 
+
+The first component seems to separate lighter and more fuel efficient cars from larger, higher-power and more expensive cars. Price, horsepower, curb.weight, and engine.size all have moderately negative loadings, while highway.mpg has a moderately positive loading. Therefore, large, powerful, and expensive cars tend to move together in one direction along this dimension while smaller and more fuel efficient cars tend to move together in the opposite direction.
+
+-   Component 2: Less Interpretable
+
+Component 2 seems to picking up more variation mostly related to fuel efficiency but with some small additional variation related to price and engine size. Fuel efficiency has the largest loading at 0.77 while price and engine.size contribute moderate loadings at 0.39 and 0.46 respectively.
+
+$\\$
+
+<h3 style="text-align: center;">Cluster Plot Interpretation using PCA Components</h3> 
+
+The three cluster plot using the first two principal components suggests that the 3 clusters are reasonably interpretable in terms of the features of the cars that are contained within each group. The first two principal components explain over 90% of the total variability, so projecting onto the first two principal components is not losing much variability that may be helping to determine the cluster structure. Furthermore, it appears that most of the separation of the clusters lies along the first principal component. The red (3) cluster, which lies to the far left side of PC1, is the most clearly separated group. Using the loading interpretations of component 1, this cluster seems to contain automobiles that are generally larger, heavier, more powerful, more expensive, and less fuel efficient. The blue (2) cluster lies mostly to the right on PC1. Hence, the positive values of PC1 suggest that this group contains automobiles that are generally smaller, lighter, less powerful, less expensive, and more fuel efficient. The purple (1) cluster lies between the red and blue cluster and overlaps somewhat with the blue cluster. This suggests that this group seems to contain automobiles that are "average" or an intermediate in terms of size, power, price, and fuel efficiency.
+
+<h3 style="text-align: center;">Cluster Plot in DA Space</h3> 
+
+Going back to the three cluster plot in DA space, the third cluster is clearly separated from the other two clusters, especially along the first discriminant function. Therefore, cluster 3 appears to be the most distinct group. Cluster 2 is fairly compact and mostly separated on the right side of the plot. Cluster 1 lies between these two other clusters and overlaps a little bit with the second cluster. Hence, cluster 3 and cluster 2 seem to be most distinct with cluster 1 being an intermediate. This matches what we found when we plotted onto the first two principal components.
+
+$\\$
+
+<h3 style="text-align: center;">Cluster Analysis Results</h3> 
+
+
+Both the three cluster plots onto DA space and PCA space seem to agree that 3 groups should be retained for this data set. While there are possibly a different number of groups that also could work, there seems to be pretty interpretable results when using 3 groups for this automobile data. Before we comment on our final groups, though, let's compute the cluster means of our original means to see if our interpretable groups based on the PCA plot are indeed accurate.
+
+```{r, include=FALSE}
+groups <- cutree(auto.clust2, k = 3)
+auto_with_clusters <- auto_ca
+auto_with_clusters$cluster <- factor(groups)
+```
+
+```{r, echo=FALSE}
+cluster_summary <- auto_with_clusters %>%
+  group_by(cluster) %>%
+  summarise(
+    mean_highway_mpg = mean(highway.mpg), 
+    mean_price = mean(price),
+    mean_horsepower = mean(horsepower),
+    mean_curb_weight = mean(curb.weight),
+    mean_engine_size = mean(engine.size),
+  )
+kable(cluster_summary)
+```
+
+
+The results do indeed match the results of our cluster interpretations based on the first two principal components. Hence, we appear to have 3 final groups in our automobile data. These groups all seem to be pretty interpretable in terms of power, size, price, and fuel efficiency based off our PCA loadings and the cluster means of our original variables. Cluster 3 seems to contain vehicles that are larger, heavier, more expensive, and less fuel efficient. Cluster 2 seems to contain vehicles that are smaller, lighter, less expensive, and more fuel efficient. Cluster 1 seems to contain vehicles that are intermediate in terms of power, size, price, and fuel efficiency.
+
+
+## Conclusions and Discussion
+
+
+Overall, the various multivariate analyses all suggest that the complex high-dimensional automobile data is ultimately organized around a much simpler and consistent underlying structure. This underlying structure contrasted larger, heavier, more powerful, and more expensive vehicles on one end against smaller lighter, more fuel-efficient vehicles on the other. Although each method approached the data from a different perspective and offered unique insights, this same general pattern appeared repeatedly throughout each method. 
+
+Throughout this project, we sought to answer several questions about the underlying structure of the automobile data. The first question aimed to see if a smaller number of latent dimensions could explain the variation between quantitative automobile characteristics. With a root mean squared error of 0.016, factor analysis provided strong evidence in favor of this. The PAF two-factor solution resulted in price, horsepower, curb weight, and engine size loading together on a price/size/performance factor while city MPG and highway MPG loaded together on a fuel-efficiency factor. Hence, much of the variation among quantitative automobile features can be summarized by a tradeoff between performance/size/cost and fuel economy, consistent with the same general underlying structure that we saw throughout this project. 
+
+Through our second question, we sought to determine if predefined automobile categories differed in their overall multivariate profiles. We approached this question by utilizing the variables from our factor analysis that we found drove most of the variation behind the latent structure of automobiles: price, horsepower, curb weight, engine size, and highway mpg. Through MANOVA, we found that body style was significant associated with the joint response vector of these variables and follow up univariate tests based on Type III sums of squares found that body style was significantly associated with each response variable individually. Through deeper analysis, we used treatment coding with hatchbacks as the reference group, meaning that the intercept represented the estimated multivariate mean profile for hatchbacks and the body-style coefficients represented differences between each body style and hatchbacks. From this deeper analysis, the coefficients revealed that specialty vehicles tended to be more expensive, more powerful, heavier, and less fuel-efficient, while hatchbacks tended to be cheaper, lighter, less powerful, and more fuel-efficient. Sedans and wagons tended to fall as an average between these extremes. Lastly, since there was some slight upper tail deviation in the chi-square quantile plot of the residuals from our MANOVA model and some concern that the homogeneity of covariance matrices assumption was not met, we used MRPP as a nonparametric support to our conclusions. MRPP confirmed our MANOVA results that body style explains meaningful differences between the multivariate response vector of price, horsepower, curb weight, engine size, and highway mpg. 
+
+Our third question asked whether automobiles naturally form groups based on their quantitative characteristics. Once again, we chose the quantiative variables that drove most of the variation in our automobile data: price, horsepower, curb weight, engine size, and highway mpg. Cluster analysis suggested that three interpretable groups were present. One cluster represented high price, high power, heavy, and low fuel efficiency automobiles. Another represented lower price, lighter, and more fuel-efficient automobiles. The final one represented an intermediate group. This grouping based on price/performance/fuel efficient characteristics once again reinforced the general pattern that the dominant structure in the data reflects a tradeoff between price/size/performance and fuel efficiency. 
+
+Our fourth question asked whether automobiles or body styles show clear gradients, separation, or overlap in lower-dimensional ordination space. The ordination analyses showed that this answer depends on the type of representation. When using categorized variables that were aggregated by body style, correspondence analysis showed that body styles such as convertibles and hardtops appeared more distinct as they were associated with specialized characteristics such as higher price, rear-wheel drive, and specific engine configurations. In contrast, non metric multidimensional scaling revealed that based on individual continuous automobile variables, there was substantial overlap between body styles and no clear clusters. Returning to the results of the cluster analysis, while one might be tempted to categorize the clusters based on body style, this does not seem to be the case. For instance, the high price, high power, heavy, and low fuel efficiency cluster is very tempting to label as a "convertibles and hardtops" cluster, but the high within body style variation revealed by non metric multdimensional scaling provides evidence that sharply separated clusters based on body style is not the case. Instead, body style is related to automobile characteristics but the relationship is better understood as differing along a set of broad gradients rather than sharply separated categories. 
+
+Taken altogether, the analyses reveal several key takeaways. The first takeaway is that the main driver of variation between automobiles is a tradeoff between expensive, high performing, large vehicles against cheaper, smaller, and more fuel efficient vehicles. Another key takeaway is that body style is a meaningful driver of this variation, but it does not completely determine the automobile profile. Within body styles, vehicles occupy different regions of broad quantitative gradients of price, size, power, and fuel efficiency. However, convertibles and hardtops are more likely to appear at the expensive and performance oriented end of the space, hatchbacks are more likely to appear at the economical and fuel-efficient end, while sedans and wagons are more likely to occupy intermediate or overlapping positions. Ultimately, this analysis reveals that a vehicle's performance and value are not just determined by any single characteristic, but rather a broader multivariate tradeoff in which price, size, weight, engine power, and lower fuel efficiency tend to move together.
+
+There are several limitations to this analysis that should be acknowledged when interpreting these results. First off, some body style groups, especially convertibles and hardtops, had small sample sizes, so their distinctness compared to other body styles should be interpreted cautiously. Furthermore, the dataset comes from the 1985 automobile market and hence the results of our analysis should be interpreted with regard to that time period. Future work could compare the patterns we found to a newer automobile dataset and examine whether these patterns still exist or if the market has changed significantly over time. Another interesting exploration could be whether electric vehicles can be broken down in a similar way or if their latent underlying structure is completely different than fuel-based vehicles. Nonetheless, this analysis provides an in-depth analysis to the structure of automobiles given these limitations and only using observed data. 
+
+
+
+
+
+
+
