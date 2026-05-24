@@ -1,6 +1,8 @@
 # Latent Structure and Group Differences in Automobile Characteristics
 
-This project applies multivariate statistical methods to the 1985 UCI Automobile dataset to study relationships among automobile price, performance, size, fuel efficiency, and body style.
+This project applies multivariate statistical methods to the 1985 UCI Automobile dataset to study relationships among automobile price, performance, size, fuel efficiency, and body style. 
+
+This project was completed by Kyle Levesque and Eric Lin for a multivariate statistics course at Yale University. 
 
 ## Overview
 
@@ -27,4 +29,4 @@ The analysis suggests that much of the structure in the automobile data reflects
 
 ## Data Source
 
-The dataset comes from the 1985 Ward’s Automotive Yearbook and is publicly available through the UCI Machine Learning Repository.
+The dataset comes from the 1985 Ward’s Automotive Yearbook and is publicly available through the [UCI Machine Learning Repository](https://archive.ics.uci.edu/dataset/10/automobile).
