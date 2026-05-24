@@ -19,11 +19,12 @@ The goal of this analysis is to understand whether automobile characteristics ca
 
 The analysis suggests that much of the structure in the automobile data reflects a tradeoff between larger, more powerful, higher-priced vehicles and more fuel-efficient vehicles. Body style is meaningfully associated with multivariate automobile profiles, but the ordination results show substantial overlap rather than perfectly separated body-style clusters.
 
-## Repository Structure
+## Files
 
-```text
-data/
-  automobile.csv
-automobile_multivariate_statistical_analysis.Rmd
-automobile_multivariate_analysis_report.pdf
-README.md
+- `automobile_multivariate_analysis_report.pdf`: Final written report
+- `automobile_multivariate_statistical_analysis.Rmd`: R Markdown source file
+- `data/automobile.csv`: Automobile dataset used in the analysis
+
+## Data Source
+
+The dataset comes from the 1985 Ward’s Automotive Yearbook and is publicly available through the UCI Machine Learning Repository.
